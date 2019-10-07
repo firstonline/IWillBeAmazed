@@ -6,30 +6,38 @@ using Unity.Mathematics;
 
 public class UnitSelectionSystem : JobComponentSystem
 {
-	EndSimulationEntityCommandBufferSystem m_EntityCommandBufferSystem;
+	BeginSimulationEntityCommandBufferSystem m_EntityCommandBufferSystem;
 	float cooldown;
 
 	protected override void OnCreate()
 	{
 		// Cache the BeginSimulationEntityCommandBufferSystem in a field, so we don't have to create it every frame
-		m_EntityCommandBufferSystem = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+		m_EntityCommandBufferSystem = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
 	}
 
-	private struct SelectionJob : IJobForEach<UnitSelectionComponent, PlayerInputComponent, Translation>
+	private struct SelectionJob : IJobForEachWithEntity<UnitSelectionComponent, PlayerInputComponent, Translation>
 	{
 		public EntityCommandBuffer.Concurrent commandBuffer;
 
-		public void Execute(ref UnitSelectionComponent selection,
+		public void Execute(Entity entity, int index, ref UnitSelectionComponent selection,
 			[ReadOnly] ref PlayerInputComponent playerInput, [ReadOnly] ref Translation translation)
 		{
 			if (playerInput.LeftClick)
 			{
-				if (math.distance(playerInput.MousePosition, translation.Value) < 1f)
+				if (math.distance(playerInput.MousePosition, translation.Value) < 0.71f)
 				{
+					if (!selection.IsSelected)
+					{
+						commandBuffer.AddComponent(index, entity, typeof(NeedsHighlighComponent));
+					}
 					selection.IsSelected = true;
 				}
 				else
 				{
+					if (selection.IsSelected)
+					{
+						commandBuffer.AddComponent(index, entity, typeof(DeselectedTagComponent));
+					}
 					selection.IsSelected = false;
 				}
 			}
